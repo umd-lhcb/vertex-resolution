@@ -1,5 +1,7 @@
 BINPATH	:=	bin
 VPATH	:=	src:$(BINPATH)
+CPP_FILES	:=	$(wildcard src/*.cpp)
+EXE_FILES	:=	$(patsubst src/%.cpp,$(BINPATH)/%,$(CPP_FILES))
 
 # Compiler settings
 COMPILER	:=	$(shell root-config --cxx)
@@ -11,7 +13,7 @@ LINKFLAGS	:=	$(shell root-config --libs)
 # General #
 ###########
 
-exe: PrintMCDecay ReweightRDX ReweightRDXDebug
+exe: $(EXE_FILES)
 
 .PHONY: clean
 clean:
