@@ -1,6 +1,6 @@
 // Author: Yipeng Sun, Svende Braun
 // License: BSD 2-clause
-// Last Change: Tue Sep 20, 2022 at 03:26 AM -0400
+// Last Change: Mon Nov 21, 2022 at 07:37 AM -0500
 
 #pragma once
 
@@ -31,20 +31,12 @@ using ROOT::Math::XYZVector;
 // Rebuild momentum //
 //////////////////////
 
-PxPyPzEVector rebuildMu4Mom(PxPyPzEVector v4Mu, vector<double> smrFac) {
-  auto vec = PxPyPzMVector{};
-
-  vec.SetPx(v4Mu.Px() * smrFac[0]);
-  vec.SetPy(v4Mu.Py() * smrFac[1]);
-  vec.SetPz(v4Mu.Pz() * smrFac[2]);
-  vec.SetM(v4Mu.M());
-
-  return PxPyPzEVector(vec);
-}
-
 XYZVector buildBFlightDir(double endVtxX, double ownPvX, double endVtxY,
-                          double ownPvY, double endVtxZ, double ownPvZ) {
-  return XYZVector(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
+                          double ownPvY, double endVtxZ, double ownPvZ,
+                          float smrAngle) {
+  auto flight = XYZVector(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
+  flight.SetTheta(flight.Theta() + smrAngle);
+  return flight;
 }
 
 //////////////////////////////
