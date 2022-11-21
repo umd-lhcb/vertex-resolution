@@ -1,6 +1,6 @@
 // Author: Yipeng Sun
 // License: BSD 2-clause
-// Last Change: Mon Nov 21, 2022 at 05:50 AM -0500
+// Last Change: Mon Nov 21, 2022 at 06:11 AM -0500
 //
 // Description: Apply vertex smearing to ntuples
 
@@ -47,13 +47,13 @@ static const vPStrStr FIT_VARS{
 };
 
 static const string DST_TEST_BR = "dst_PX";
-static const string D0_TEST_BR = "d0_PX";
+static const string D0_TEST_BR  = "d0_PX";
 
 static const string B0_BR_PREFIX = "b0";
-static const string B_BR_PREFIX = "b";
+static const string B_BR_PREFIX  = "b";
 
 static const string THETA_TREE_NAME = "Smear";
-static const string THETA_BR_NAME = "Delta";
+static const string THETA_BR_NAME   = "Delta";
 
 ////////////////////////
 // RDataFrame helpers //
@@ -173,7 +173,7 @@ RNode defineBranch(RNode df, string particle = B0_BR_PREFIX,
 
 vector<float> loadDeltaTheta(string auxFile) {
   vector<float> result{};
-  auto df = RDataFrame(THETA_TREE_NAME, auxFile);
+  auto          df = RDataFrame(THETA_TREE_NAME, auxFile);
   df.Foreach(
       [&](float x) {
         if (x > 0.25 || x < -0.25) return;
@@ -185,7 +185,7 @@ vector<float> loadDeltaTheta(string auxFile) {
 
 auto getRandSmrHelper(vector<float>& smr) {
   auto size = make_shared<unsigned long>(smr.size());
-  auto rng = make_shared<TRandomMixMax256>(RAND_SEED);
+  auto rng  = make_shared<TRandomMixMax256>(RAND_SEED);
 
   return [&smr, size, rng] {
     unsigned long rand = rng->Uniform(0, *(size.get()));
@@ -298,18 +298,18 @@ int main(int argc, char** argv) {
   }
 
   // get options
-  auto ntpNameIn = parsedArgs["input"].as<string>();
+  auto ntpNameIn  = parsedArgs["input"].as<string>();
   auto ntpNameOut = parsedArgs["output"].as<string>();
   auto ntpNameAux = parsedArgs["aux"].as<string>();
 
-  auto kSmrBrName = parsedArgs["kSmrBrName"].as<string>();
-  auto piSmrBrName = parsedArgs["piSmrBrName"].as<string>();
+  auto fitLin  = parsedArgs["fitLin"].as<double>();
+  auto fitQuad = parsedArgs["fitQuad"].as<double>();
 
   // load true and reco'ed flight theta angles
   auto vDeltaTheta = loadDeltaTheta(ntpNameAux);
 
   // snapshot option
-  auto writeOpts = ROOT::RDF::RSnapshotOptions{};
+  auto writeOpts  = ROOT::RDF::RSnapshotOptions{};
   writeOpts.fMode = "UPDATE";
 
   // loop over input trees
@@ -321,30 +321,12 @@ int main(int argc, char** argv) {
     // reinitialize random seed for each tree
     auto funcSmr = getRandSmrHelper(vDeltaTheta);
 
-    // figure out B meson name
-    auto ntpInTest = new TFile(ntpNameIn.data());
-    auto treeTest = dynamic_cast<TTree*>(ntpInTest->Get(t.data()));
-    if (treeTest == nullptr) {
-      cout << t << " doesn't exist in " << ntpNameIn << ". skipping..." << endl;
-      continue;
-    }
-
-    string bMeson;
-    if (branchExists(treeTest, DST_TEST_BR)) {
-      bMeson = B0_BR_PREFIX;
-    } else if (branchExists(treeTest, D0_TEST_BR)) {
-      bMeson = B_BR_PREFIX;
-    } else {
-      cout << "No known branch found for D0 nor D*. Exit now..." << endl;
-      exit(1);
-    }
-
     // build a dataframe from input ntuple
-    auto df = static_cast<RNode>(RDataFrame(t, ntpNameIn));
+    auto           df = static_cast<RNode>(RDataFrame(t, ntpNameIn));
     vector<string> outputBrNames{"runNumber", "eventNumber"};
 
     // define raw branches
-    df = defineBranch(df, bMeson);
+    df = defineBranch(df, "");
     for (auto& [br, expr] : FIT_VARS) outputBrNames.emplace_back(br);
 
     cout << "Writing to " << ntpNameOut << endl;
