@@ -28,6 +28,17 @@ clean:
 #########
 
 
+########
+# Test #
+########
+.PHONY: test-all
+
+test-all: gen/test-rdx-run2-Bd2Dst0MuNu-sim09k.root
+
+gen/test-%.root: samples/%.root $(BINPATH)/ApplyVertexSmear
+	@./bin/ApplyVertexSmear -i $< -x ./inputs/smearing_vec.root -o $@
+
+
 ####################
 # Generic patterns #
 ####################
