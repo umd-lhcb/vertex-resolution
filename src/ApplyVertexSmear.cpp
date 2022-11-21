@@ -1,6 +1,6 @@
 // Author: Yipeng Sun
 // License: BSD 2-clause
-// Last Change: Mon Nov 21, 2022 at 04:08 AM -0500
+// Last Change: Mon Nov 21, 2022 at 05:50 AM -0500
 //
 // Description: Apply vertex smearing to ntuples
 
@@ -76,23 +76,6 @@ RNode defineBranch(RNode df, string particle = B0_BR_PREFIX,
 ////////////////////////////////////
 // Helpers for weight computation //
 ////////////////////////////////////
-
-vector<float> loadDeltaTheta(string filename) {
-  vector<float> result{};
-  TFile ntpSmr(filename.c_str());
-  auto tree = static_cast<TTree*>(ntpSmr.Get(THETA_TREE_NAME.c_str()));
-
-  float tmp;
-  auto nEntries = tree->GetEntries();
-  tree->SetBranchAddress(THETA_BR_NAME.c_str(), &tmp);
-  for (unsigned long i = 0; i < nEntries; i++) {
-    tree->GetEntry(i);
-    if (tmp > 0.25 || tmp < -0.25) continue;
-    result.emplace_back(TMath::Abs(tmp));
-  }
-
-  return result;
-}
 
 // template <typename T, typename C = decay_t<decltype(*begin(declval<T>()))>>
 // tuple<RNode, vector<string>, vector<TH3D*>> applyWtFromHistos(
@@ -184,35 +167,31 @@ vector<float> loadDeltaTheta(string filename) {
 //   return {directives, outputBrs};
 // }
 
-// /////////////////////////////////
-// // Rest frame variable helpers //
-// /////////////////////////////////
+/////////////////////////////////
+// Rest frame variable helpers //
+/////////////////////////////////
 
-// auto getRandSmrHelper(vector<vector<double>>& smr) {
-//   auto size = make_shared<unsigned long>(smr.size());
-//   auto rng  = make_shared<TRandomMixMax256>(42);
+vector<float> loadDeltaTheta(string auxFile) {
+  vector<float> result{};
+  auto df = RDataFrame(THETA_TREE_NAME, auxFile);
+  df.Foreach(
+      [&](float x) {
+        if (x > 0.25 || x < -0.25) return;
+        result.emplace_back(TMath::Abs(x));
+      },
+      {THETA_BR_NAME});
+  return result;
+}
 
-//   return [&smr, size, rng] {
-//     unsigned long rand = rng->Uniform(0, *(size.get()));
-//     return smr[rand];
-//   };
-// }
+auto getRandSmrHelper(vector<float>& smr) {
+  auto size = make_shared<unsigned long>(smr.size());
+  auto rng = make_shared<TRandomMixMax256>(RAND_SEED);
 
-// vector<string> setBrPrefix(const string prefix, const vector<string> vars) {
-//   vector<string> result{};
-//   for (const auto& v : vars) result.emplace_back(prefix + "_" + v);
-//   return result;
-// }
-
-// void getSmrFac(vector<vector<double>>& result, string auxFile,
-//                string prefix = "k_smr") {
-//   auto df = RDataFrame(prefix, auxFile);
-//   df.Foreach(
-//       [&](double x, double y, double z) {
-//         result.emplace_back(vector<double>{x, y, z});
-//       },
-//       setBrPrefix(prefix, {"x", "y", "z"}));
-// }
+  return [&smr, size, rng] {
+    unsigned long rand = rng->Uniform(0, *(size.get()));
+    return smr[rand];
+  };
+}
 
 // template <typename F>
 // RNode computeDiFVars(RNode df, F& randGetter, double mB, string suffix,
@@ -304,6 +283,11 @@ int main(int argc, char** argv) {
     ("t,trees", "specify tree names",
      cxxopts::value<vector<string>>()
      ->default_value("TupleB0/DecayTree,TupleBminus/DecayTree"))
+    // fit params
+    ("fitLin", "specify linear coeff", cxxopts::value<double>()
+     ->default_value("0.105"))
+    ("fitQuad", "specify quadratic coeff", cxxopts::value<double>()
+     ->default_value("6.29"))
   ;
   // clang-format on
 
@@ -328,23 +312,50 @@ int main(int argc, char** argv) {
   auto writeOpts = ROOT::RDF::RSnapshotOptions{};
   writeOpts.fMode = "UPDATE";
 
+  // loop over input trees
+  auto inputTrees = parsedArgs["trees"].as<vector<string>>();
+  for (auto& t : inputTrees) {
+    cout << "--------" << endl;
+    cout << "Working on tree: " << t << endl;
+
+    // reinitialize random seed for each tree
+    auto funcSmr = getRandSmrHelper(vDeltaTheta);
+
+    // figure out B meson name
+    auto ntpInTest = new TFile(ntpNameIn.data());
+    auto treeTest = dynamic_cast<TTree*>(ntpInTest->Get(t.data()));
+    if (treeTest == nullptr) {
+      cout << t << " doesn't exist in " << ntpNameIn << ". skipping..." << endl;
+      continue;
+    }
+
+    string bMeson;
+    if (branchExists(treeTest, DST_TEST_BR)) {
+      bMeson = B0_BR_PREFIX;
+    } else if (branchExists(treeTest, D0_TEST_BR)) {
+      bMeson = B_BR_PREFIX;
+    } else {
+      cout << "No known branch found for D0 nor D*. Exit now..." << endl;
+      exit(1);
+    }
+
+    // build a dataframe from input ntuple
+    auto df = static_cast<RNode>(RDataFrame(t, ntpNameIn));
+    vector<string> outputBrNames{"runNumber", "eventNumber"};
+
+    // define raw branches
+    df = defineBranch(df, bMeson);
+    for (auto& [br, expr] : FIT_VARS) outputBrNames.emplace_back(br);
+
+    cout << "Writing to " << ntpNameOut << endl;
+    df.Snapshot(t, ntpNameOut, outputBrNames, writeOpts);
+  }
+
   // for (auto it = outputDirective.begin(); it != outputDirective.end(); it++)
   // {
-  //   cout << "--------" << endl;
   //   auto treeName    = it->first.as<string>();
-  //   auto ntpInTest   = new TFile(ntpIn.data());
   //   auto ntpsToClean = vector<TFile*>{ntpInTest};
 
-  //   auto treeTest = dynamic_cast<TTree*>(ntpInTest->Get(treeName.data()));
-  //   if (treeTest == nullptr) {
-  //     cout << treeName << " doesn't exist in " << ntpIn << ". skipping..."
-  //          << endl;
-  //     continue;
-  //   }
-
-  //   // build a dataframe from input ntuple
-  //   auto           df = static_cast<RNode>(RDataFrame(treeName, ntpIn));
-  //   vector<string> outputBrNames{"runNumber", "eventNumber"};
   //   if (applyAlias) {
   //     df = defineBranch(df, particle);
   //     // compute ETA
@@ -407,9 +418,4 @@ int main(int argc, char** argv) {
   //     df = defineBranch(dfHistos, ""s, directives);
   //     for (auto br : outputBrsWts) outputBrNames.emplace_back(br);
   //   }
-  //   cout << "Writing to " << ntpOut << endl;
-  //   df.Snapshot(treeName, ntpOut, outputBrNames, writeOpts);
-
-  //   for (auto& n : ntpsToClean) delete n;
-  // }
 }
