@@ -1,6 +1,6 @@
 // Author: Yipeng Sun, Svende Braun
 // License: BSD 2-clause
-// Last Change: Mon Nov 21, 2022 at 07:37 AM -0500
+// Last Change: Mon Nov 21, 2022 at 12:21 PM -0500
 
 #pragma once
 
@@ -11,15 +11,12 @@
 #include <Math/VectorUtil.h>
 #include <TMath.h>
 #include <TROOT.h>
+#include <TVector3.h>
 
 using std::vector;
 
-using ROOT::Math::LorentzVector;
-using ROOT::Math::PtEtaPhiMVector;
 using ROOT::Math::PxPyPzEVector;
 using ROOT::Math::PxPyPzMVector;
-
-using ROOT::Math::DisplacementVector3D;
 using ROOT::Math::XYZVector;
 
 #define K_M 493.677
@@ -34,9 +31,10 @@ using ROOT::Math::XYZVector;
 XYZVector buildBFlightDir(double endVtxX, double ownPvX, double endVtxY,
                           double ownPvY, double endVtxZ, double ownPvZ,
                           float smrAngle) {
-  auto flight = XYZVector(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
+  // FIXME: Legacy way of doing things
+  auto flight = TVector3(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
   flight.SetTheta(flight.Theta() + smrAngle);
-  return flight;
+  return XYZVector(flight);
 }
 
 //////////////////////////////
