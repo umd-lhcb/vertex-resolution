@@ -1,5 +1,5 @@
 BINPATH	:=	bin
-VPATH	:=	src:$(BINPATH)
+VPATH	:=	src
 CPP_FILES	:=	$(wildcard src/*.cpp)
 EXE_FILES	:=	$(patsubst src/%.cpp,$(BINPATH)/%,$(CPP_FILES))
 
@@ -7,12 +7,14 @@ EXE_FILES	:=	$(patsubst src/%.cpp,$(BINPATH)/%,$(CPP_FILES))
 COMPILER	:=	$(shell root-config --cxx)
 CXXFLAGS	:=	$(shell root-config --cflags) -Iinclude
 LINKFLAGS	:=	$(shell root-config --libs)
+ADDCXXFLAGS	:=	-O2 -march=native -mtune=native
 
 
 ###########
 # General #
 ###########
 
+.PHONY: exe
 exe: $(EXE_FILES)
 
 .PHONY: clean
@@ -30,7 +32,5 @@ clean:
 # Generic patterns #
 ####################
 
-.SECONDARY:
-
-%: %.cpp
-	$(COMPILER) $(CXXFLAGS) -o $(BINPATH)/$@ $< $(LINKFLAGS)
+$(BINPATH)/%: %.cpp
+	$(COMPILER) $(CXXFLAGS) $(ADDCXXFLAGS) -o $@ $< $(LINKFLAGS)
