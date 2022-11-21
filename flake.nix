@@ -35,6 +35,7 @@
 
             root
             cxxopts
+            boost
 
             # Python stack
             pyyaml
