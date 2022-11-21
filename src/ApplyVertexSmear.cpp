@@ -1,6 +1,6 @@
 // Author: Yipeng Sun
 // License: BSD 2-clause
-// Last Change: Mon Nov 21, 2022 at 12:21 PM -0500
+// Last Change: Mon Nov 21, 2022 at 12:25 PM -0500
 //
 // Description: Apply vertex smearing to ntuples
 
@@ -107,7 +107,8 @@ auto computeDeltaThetaHelper(double lin, double quad) {
   return [lin, quad, rng](float rawAngle) {
     int sign = 1;
     if (rng->Uniform(0, 1) > 0.5) sign = -1;
-    return sign * (lin * rawAngle + quad * rawAngle * rawAngle);
+    return static_cast<float>(sign *
+                              (lin * rawAngle + quad * rawAngle * rawAngle));
   };
 }
 
@@ -237,7 +238,7 @@ int main(int argc, char** argv) {
 
     auto funcAngle = computeDeltaThetaHelper(fitLin, fitQuad);
     df = df.Define(bMeson + "_delta_theta", funcAngle, {"raw_delta_theta"});
-    outputBrNames.emplace_back(bMeson + "delta_theta");
+    outputBrNames.emplace_back(bMeson + "_delta_theta");
 
     // smear B meson flight vector angle theta
     df = df.Define(
