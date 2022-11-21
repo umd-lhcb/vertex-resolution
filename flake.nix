@@ -9,16 +9,15 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, root-curated, pyTuplingUtils }:
-    # {
-    #   overlay = import ./nix/overlay.nix;
-    # } //
+    {
+      overlay = import ./nix/overlay.nix;
+    } //
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
           config = { allowUnfree = true; };
-          # overlays = [ root-curated.overlay pyTuplingUtils.overlay self.overlay ];
-          overlays = [ root-curated.overlay pyTuplingUtils.overlay ];
+          overlays = [ root-curated.overlay pyTuplingUtils.overlay self.overlay ];
         };
         python = pkgs.python3;
         pythonPackages = python.pkgs;
@@ -26,6 +25,7 @@
       rec {
         packages = flake-utils.lib.flattenTree {
           dev-shell = devShell.inputDerivation;
+          vertex-resolution = pkgs.vertex-resolution;
         };
         devShell = pkgs.mkShell rec {
           name = "vertex-resolution-dev";
