@@ -1,6 +1,6 @@
 // Author: Yipeng Sun
 // License: BSD 2-clause
-// Last Change: Mon Nov 21, 2022 at 12:25 PM -0500
+// Last Change: Mon Nov 21, 2022 at 09:57 PM -0500
 //
 // Description: Apply vertex smearing to ntuples
 
@@ -84,8 +84,9 @@ vector<float> loadDeltaTheta(string auxFile) {
   auto          df = RDataFrame(THETA_TREE_NAME, auxFile);
   df.Foreach(
       [&](float x) {
-        if (x > 0.25 || x < -0.25) return;
-        result.emplace_back(TMath::Abs(x));
+        // if (x > 0.25 || x < -0.25) return;
+        // result.emplace_back(TMath::Abs(x));
+        result.emplace_back(x);
       },
       {THETA_BR_NAME});
   return result;
@@ -101,10 +102,11 @@ auto getRandSmrHelper(vector<float>& smr) {
   };
 }
 
-auto computeDeltaThetaHelper(double lin, double quad) {
+auto computeDeltaThetaHelper(double& lin, double& quad) {
   auto rng = make_shared<TRandomMixMax256>(RAND_SEED * 2);
 
-  return [lin, quad, rng](float rawAngle) {
+  return [&lin, &quad, rng](float rawAngle) {
+    rawAngle = TMath::Abs(rawAngle);
     int sign = 1;
     if (rng->Uniform(0, 1) > 0.5) sign = -1;
     return static_cast<float>(sign *
@@ -248,6 +250,16 @@ int main(int argc, char** argv) {
 
     // recompute fit vars
     df = computeFitVars(df, mB, bMeson, dMeson, "vtx_smr", outputBrNames);
+
+    // compute optional variation weights
+    // the signs ARE correct
+    df = df.Define("wvtx_debug",
+                   "0.01*log(TMath::Abs(" + bMeson + "_delta_theta))");
+    df = df.Define("wvtx_m", "1 + wvtx_debug");
+    df = df.Define("wvtx_p", "1 - wvtx_debug");
+    outputBrNames.emplace_back("wvtx_debug");
+    outputBrNames.emplace_back("wvtx_p");
+    outputBrNames.emplace_back("wvtx_m");
 
     cout << "Writing to " << ntpNameOut << endl;
     df.Snapshot(t, ntpNameOut, outputBrNames, writeOpts);
