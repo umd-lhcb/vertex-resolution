@@ -9,6 +9,11 @@ CXXFLAGS	:=	$(shell root-config --cflags) -Iinclude
 LINKFLAGS	:=	$(shell root-config --libs)
 ADDCXXFLAGS	:=	-O2 -march=native -mtune=native
 
+OS := $(shell uname)
+ifeq ($(OS),Darwin)
+  $(info OS is $(OS) (macOS), adding -lc++fs to LINKFLAGS)
+  LINKFLAGS := $(shell root-config --libs) -lc++fs
+endif
 
 ###########
 # General #
