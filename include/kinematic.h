@@ -24,6 +24,21 @@ using ROOT::Math::XYZVector;
 #define B_M 5279.34
 #define B0_M 5279.65
 
+/////////////
+// B theta //
+/////////////
+
+Double_t getBTheta(double endVtxX, double ownPvX, double endVtxY,
+                   double ownPvY, double endVtxZ, double ownPvZ) {
+  auto flight = TVector3(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
+  return flight.Theta();
+}
+
+Double_t getBTrueTheta(double px, double py, double pz) {
+  auto flight = TVector3(px, py, pz);
+  return flight.Theta();
+}
+
 //////////////////////
 // Rebuild momentum //
 //////////////////////
