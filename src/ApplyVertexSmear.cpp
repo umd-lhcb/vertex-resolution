@@ -54,8 +54,10 @@ static const string B_BR_PREFIX   = "b";
 static const string DST_BR_PREFIX = "dst";
 static const string D0_BR_PREFIX  = "d0";
 
-static const string THETA_TREE_NAME = "Smear";
-static const string THETA_BR_NAME   = "Delta";
+// static const string THETA_TREE_NAME = "Smear";
+// static const string THETA_BR_NAME   = "Delta";
+static const string DELTA_THETA_TREE = "dst0munu";
+static const string DELTA_THETA_BR = "delta_theta";
 
 ////////////////////////
 // RDataFrame helpers //
@@ -79,20 +81,21 @@ RNode defineBranch(RNode df, string particle = B0_BR_PREFIX,
 // Rest frame variable helpers //
 /////////////////////////////////
 
-vector<float> loadDeltaTheta(string auxFile) {
-  vector<float> result{};
-  auto          df = RDataFrame(THETA_TREE_NAME, auxFile);
+vector<double> loadDeltaTheta(string auxFile, string year) {
+  vector<double> result{};
+  auto          df = RDataFrame(DELTA_THETA_TREE + year, auxFile);
   df.Foreach(
-      [&](float x) {
-        // if (x > 0.25 || x < -0.25) return;
+      [&](double x) {
+        // if (x > 0.25 || x < -0.25) return; // cut at 0.05 included in smearing distribution production
         // result.emplace_back(TMath::Abs(x));
         result.emplace_back(x);
       },
-      {THETA_BR_NAME});
+      {DELTA_THETA_BR});
+
   return result;
 }
 
-auto getRandSmrHelper(vector<float>& smr) {
+auto getRandSmrHelper(vector<double>& smr) {
   auto size = make_shared<unsigned long>(smr.size());
   auto rng  = make_shared<TRandomMixMax256>(RAND_SEED);
 
@@ -105,11 +108,11 @@ auto getRandSmrHelper(vector<float>& smr) {
 auto computeDeltaThetaHelper(double& lin, double& quad) {
   auto rng = make_shared<TRandomMixMax256>(RAND_SEED * 2);
 
-  return [&lin, &quad, rng](float rawAngle) {
+  return [&lin, &quad, rng](double rawAngle) {
     rawAngle = TMath::Abs(rawAngle);
     int sign = 1;
     if (rng->Uniform(0, 1) > 0.5) sign = -1;
-    return static_cast<float>(sign *
+    return static_cast<double>(sign *
                               (lin * rawAngle + quad * rawAngle * rawAngle));
   };
 }
@@ -159,6 +162,7 @@ int main(int argc, char** argv) {
     // I/O
     ("i,input", "specify input ntuple", cxxopts::value<string>())
     ("x,aux", "specify auxiliary ntuple", cxxopts::value<string>())
+    ("y,year", "specify year (16,17,18)", cxxopts::value<string>())
     ("o,output", "specify output ntuple", cxxopts::value<string>())
     ("t,trees", "specify tree names",
      cxxopts::value<vector<string>>()
@@ -181,12 +185,13 @@ int main(int argc, char** argv) {
   auto ntpNameIn  = parsedArgs["input"].as<string>();
   auto ntpNameOut = parsedArgs["output"].as<string>();
   auto ntpNameAux = parsedArgs["aux"].as<string>();
+  auto yr         = parsedArgs["year"].as<string>();
 
   auto fitLin  = parsedArgs["fitLin"].as<double>();
   auto fitQuad = parsedArgs["fitQuad"].as<double>();
 
   // load true and reco'ed flight theta angles
-  auto vDeltaTheta = loadDeltaTheta(ntpNameAux);
+  auto vDeltaTheta = loadDeltaTheta(ntpNameAux, yr);
 
   // snapshot option
   auto writeOpts  = ROOT::RDF::RSnapshotOptions{};
