@@ -45,7 +45,7 @@ Double_t getBTrueTheta(double px, double py, double pz) {
 
 XYZVector buildBFlightDir(double endVtxX, double ownPvX, double endVtxY,
                           double ownPvY, double endVtxZ, double ownPvZ,
-                          float smrAngle) {
+                          double smrAngle) {
   // FIXME: Legacy way of doing things
   auto flight = TVector3(endVtxX - ownPvX, endVtxY - ownPvY, endVtxZ - ownPvZ);
   flight.SetTheta(flight.Theta() + smrAngle);
